@@ -1,7 +1,7 @@
 """question.py
 
 Contains our Question class, which knows how to ask a question, then
-run abitrary code.
+run arbitrary code.
 
 ----------------------------------------------------------------------
 
@@ -24,7 +24,7 @@ limitations under the License.
 
 from typing import Tuple
 
-from init import shell
+from microstack_init import shell
 
 
 class InvalidQuestion(Exception):
@@ -43,41 +43,44 @@ class InvalidAnswer(Exception):
 
 class AnswerNotImplemented(Exception):
     """Exception to raise in the case where a 'yes' or 'no' routine has
-    not been overriden in the subclass, as required.
+    not been overridden in the subclass, as required.
 
     """
 
 
-class Question():
+class Question:
     """
     Ask the user a question, and then run code as appropriate.
 
     Contains a support for always defaulting to yes.
 
     """
+
     _valid_types = [
-        'boolean',  # Yes or No, and variants thereof
-        'string',  # Accept (and sanitize) any string
-        'auto'  # Don't actually ask a question -- just execute self.yes(True)
+        "boolean",  # Yes or No, and variants thereof
+        "string",  # Accept (and sanitize) any string
+        "auto",  # Don't actually ask a question -- just execute self.yes(True)
     ]
 
-    _question = '(required)'
-    config_key = None  # Must be overriden
+    _question = "(required)"
+    config_key = None  # Must be overridden
     interactive = False
-    _type = 'auto'  # can be boolean, string or auto
-    _invalid_prompt = 'Please answer Yes or No.'
+    _type = "auto"  # can be boolean, string or auto
+    _invalid_prompt = "Please answer Yes or No."
     _retries = 3
 
-    def __init__(self):
+    def __microstack_init__(self):
 
-        if self._type not in ['boolean', 'string', 'auto']:
+        if self._type not in ["boolean", "string", "auto"]:
             raise InvalidQuestion(
-                'Invalid type {} specified'.format(self._type))
+                "Invalid type {} specified".format(self._type)
+            )
 
-        if self.config_key is None and self._type != 'auto':
+        if self.config_key is None and self._type != "auto":
             raise InvalidQuestion(
                 "No config key specified. "
-                "We don't know how to load or save this question!")
+                "We don't know how to load or save this question!"
+            )
 
     def _input_func(self, prompt):
 
@@ -88,25 +91,25 @@ class Question():
     def _validate(self, answer: str) -> Tuple[str, bool]:
         """Validate an answer.
 
-        :param anwser: raw input from the user.
+        :param answer: raw input from the user.
 
         Returns the answer, and whether or not the answer was valid.
 
         """
-        if self._type == 'auto':
+        if self._type == "auto":
             return True, True
 
-        if self._type == 'string':
+        if self._type == "string":
             # Allow people to negate a string by passing nil.
-            if answer.lower() == 'nil':
+            if answer.lower() == "nil":
                 return None, True
             return answer, True
 
         # self._type is boolean
-        if answer.lower() in ['y', 'yes']:
+        if answer.lower() in ["y", "yes"]:
             return True, True
 
-        if answer.lower() in ['n', 'no']:
+        if answer.lower() in ["n", "no"]:
             return False, True
 
         return answer, False
@@ -114,25 +117,25 @@ class Question():
     def _load(self):
         """Get the current value of the answer to this question.
 
-        Useful for loading defaults during init, and for loading
+        Useful for loading defaults during microstack_init, and for loading
         operator specified settings during updates.
 
         """
-        if self._type == 'auto':
+        if self._type == "auto":
             return
 
         answer = shell.check_output(
-            'snapctl', 'get', '{key}'.format(key=self.config_key)
+            "snapctl", "get", "{key}".format(key=self.config_key)
         )
         # Convert boolean values in to human friendly "yes" or "no"
         # values.
-        if answer.strip().lower() == 'true':
-            answer = 'yes'
-        if answer.strip().lower() == 'false':
-            answer = 'no'
+        if answer.strip().lower() == "true":
+            answer = "yes"
+        if answer.strip().lower() == "false":
+            answer = "no"
 
         # Convert null to None
-        if answer.strip().lower() == 'null':
+        if answer.strip().lower() == "null":
             answer = None
 
         return answer
@@ -147,17 +150,20 @@ class Question():
         # By this time in the process 'yes' or 'no' answers will have
         # been converted to booleans. Convert them to a lowercase
         # 'true' or 'false' string for storage in the snapctl config.
-        if self._type == 'auto':
+        if self._type == "auto":
             return
 
-        if self._type == 'boolean':
+        if self._type == "boolean":
             answer = str(answer).lower()
 
         if answer is None:
-            answer = 'null'
+            answer = "null"
 
-        shell.check('snapctl', 'set', '{key}={val}'.format(
-            key=self.config_key, val=answer))
+        shell.check(
+            "snapctl",
+            "set",
+            "{key}={val}".format(key=self.config_key, val=answer),
+        )
 
         return answer
 
@@ -199,12 +205,14 @@ class Question():
 
         prompt = "{question}{choice}[default={default}] > ".format(
             question=self._question,
-            choice=' (yes/no) ' if self._type == 'boolean' else ' ',
-            default=default)
+            choice=" (yes/no) " if self._type == "boolean" else " ",
+            default=default,
+        )
 
         for i in range(0, self._retries):
             awr, valid = self._validate(
-                self._type == 'auto' or self._input_func(prompt) or default)
+                self._type == "auto" or self._input_func(prompt) or default
+            )
             if valid:
                 if awr:
                     self.yes(awr)
@@ -213,6 +221,6 @@ class Question():
                 self._save(awr)
                 self.after(awr)
                 return awr
-            prompt = '{} is not valid. {} > '.format(awr, self._invalid_prompt)
+            prompt = "{} is not valid. {} > ".format(awr, self._invalid_prompt)
 
-        raise InvalidAnswer('Too many invalid answers.')
+        raise InvalidAnswer("Too many invalid answers.")

@@ -28,18 +28,20 @@ log = logging.getLogger("microstack_init")
 log.setLevel(logging.INFO)
 stream = logging.StreamHandler()
 formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 stream.setFormatter(formatter)
 log.addHandler(stream)
 
 
-class Env():
+class Env:
     """Singleton that tracks environment variables.
 
     Contains the env variables of the shell that called us. We also
     add the snapctl config values to it in the Setup Question.
 
     """
+
     _global_config = {}
     _global_config.update(**os.environ)
 

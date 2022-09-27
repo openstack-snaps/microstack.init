@@ -7,7 +7,7 @@ import mock
 # TODO: drop in test runner and get rid of this line.
 sys.path.append(os.getcwd())  # noqa
 
-from init.questions.question import (Question, InvalidQuestion, InvalidAnswer) # noqa
+from microstack_init.questions.question import (Question, InvalidQuestion, InvalidAnswer) # noqa
 
 
 ##############################################################################
@@ -80,8 +80,8 @@ class TestQuestionClass(unittest.TestCase):
 
         self.assertTrue(GoodBooleanQuestion())
 
-    @mock.patch('init.questions.question.shell.check_output')
-    @mock.patch('init.questions.question.shell.check')
+    @mock.patch('microstack_init.questions.question.shell.check_output')
+    @mock.patch('microstack_init.questions.question.shell.check')
     def test_auto_question(self, mock_check, mock_check_output):
         mock_check_output.return_value = ''
 
@@ -96,8 +96,8 @@ class TestInput(unittest.TestCase):
     class's input handler.
 
     """
-    @mock.patch('init.questions.question.shell.check_output')
-    @mock.patch('init.questions.question.shell.check')
+    @mock.patch('microstack_init.questions.question.shell.check_output')
+    @mock.patch('microstack_init.questions.question.shell.check')
     def test_boolean_question(self, mock_check, mock_check_output):
         mock_check_output.return_value = 'true'
 
@@ -115,8 +115,8 @@ class TestInput(unittest.TestCase):
             q._input_func = lambda x: 'foo'
             q.ask()
 
-    @mock.patch('init.questions.question.shell.check_output')
-    @mock.patch('init.questions.question.shell.check')
+    @mock.patch('microstack_init.questions.question.shell.check_output')
+    @mock.patch('microstack_init.questions.question.shell.check')
     def test_string_question(self, mock_check, mock_check_output):
         mock_check_output.return_value = 'somedefault'
 

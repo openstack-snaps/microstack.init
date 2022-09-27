@@ -1,7 +1,7 @@
 """shell.py
 
 Contains wrappers around subprocess and pymysql commands, specific to
-our needs in the init script.
+our needs in the microstack_init script.
 
 # TODO capture stdout (and output to log.DEBUG)
 
@@ -34,7 +34,7 @@ import socket
 import wget
 import json
 
-from init.config import Env, log
+from microstack_init.config import Env, log
 
 
 _env = Env().get_env()
@@ -44,13 +44,19 @@ def _popen(*args: List[str], env: Dict = _env):
     """Run a shell command, piping STDOUT and STDERR to our logger.
 
     :param args: strings to be composed into the bash call.
-    :param env: defaults to our Env singleton; can be overriden.
+    :param env: defaults to our Env singleton; can be overridden.
 
     """
-    proc = subprocess.Popen(args, env=env, stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT, bufsize=1,
-                            universal_newlines=True, encoding='utf-8')
-    for line in iter(proc.stdout.readline, ''):
+    proc = subprocess.Popen(
+        args,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        bufsize=1,
+        universal_newlines=True,
+        encoding="utf-8",
+    )
+    for line in iter(proc.stdout.readline, ""):
         log.debug(line)
 
     proc.wait()
@@ -58,10 +64,10 @@ def _popen(*args: List[str], env: Dict = _env):
 
 
 def check(*args: List[str], env: Dict = _env) -> int:
-    """Execute a shell command, raising an error on failed excution.
+    """Execute a shell command, raising an error on failed execution.
 
     :param args: strings to be composed into the bash call.
-    :param env: defaults to our Env singleton; can be overriden.
+    :param env: defaults to our Env singleton; can be overridden.
 
     """
     proc = _popen(*args, env=env)
@@ -74,12 +80,13 @@ def check_output(*args: List[str], env: Dict = _env) -> str:
     """Execute a shell command, returning the output of the command.
 
     :param args: strings to be composed into the bash call.
-    :param env: defaults to our Env singleton; can be overriden.
+    :param env: defaults to our Env singleton; can be overridden.
 
     Include our env; pass in any extra keyword args.
     """
-    return subprocess.check_output(args, env=env,
-                                   universal_newlines=True).strip()
+    return subprocess.check_output(
+        args, env=env, universal_newlines=True
+    ).strip()
 
 
 def call(*args: List[str], env: Dict = _env) -> bool:
@@ -89,7 +96,7 @@ def call(*args: List[str], env: Dict = _env) -> bool:
     False if it returned with an error code (return > 0)
 
     :param args: strings to be composed into the bash call.
-    :param env: defaults to our Env singleton; can be overriden.
+    :param env: defaults to our Env singleton; can be overridden.
     """
     proc = _popen(*args, env=env)
     return not proc.returncode
@@ -100,15 +107,16 @@ def sql(cmd: str) -> None:
 
     Really simply wrapper around a pymysql connection, suitable for
     passing the limited CREATE and GRANT commands that we need to pass
-    in our init script.
+    in our microstack_init script.
 
     :param cmd: sql to execute.
 
     """
-    mysql_conf = '{SNAP_COMMON}/etc/mysql/my.cnf'.format(**_env)
-    root_pasword = config_get('config.credentials.mysql-root-password')
-    connection = pymysql.connect(read_default_file=mysql_conf,
-                                 password=root_pasword)
+    mysql_conf = "{SNAP_COMMON}/etc/mysql/my.cnf".format(**_env)
+    root_pasword = config_get("config.credentials.mysql-root-password")
+    connection = pymysql.connect(
+        read_default_file=mysql_conf, password=root_pasword
+    )
 
     with connection.cursor() as cursor:
         cursor.execute(cmd)
@@ -116,7 +124,7 @@ def sql(cmd: str) -> None:
 
 def nc_wait(addr: str, port: str) -> None:
     """Wait for a service to be answering on a port."""
-    print('Waiting for {}:{}'.format(addr, port))
+    print("Waiting for {}:{}".format(addr, port))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     while sock.connect_ex((addr, int(port))) != 0:
         sleep(1)
@@ -125,7 +133,7 @@ def nc_wait(addr: str, port: str) -> None:
 def log_wait(log: str, message: str) -> None:
     """Wait until a message appears in a log."""
     while True:
-        with open(log, 'r') as log_file:
+        with open(log, "r") as log_file:
             for line in log_file.readlines():
                 if message in line:
                     return
@@ -139,7 +147,7 @@ def start(service: str) -> None:
                     e.g. *rabbit*
 
     """
-    check('snapctl', 'start', 'microstack.{}'.format(service))
+    check("snapctl", "start", "microstack.{}".format(service))
 
 
 def restart(service: str) -> None:
@@ -149,7 +157,7 @@ def restart(service: str) -> None:
                     e.g. *rabbit*
 
     """
-    check('snapctl', 'restart', 'microstack.{}'.format(service))
+    check("snapctl", "restart", "microstack.{}".format(service))
 
 
 def enable(service: str) -> None:
@@ -159,7 +167,7 @@ def enable(service: str) -> None:
                     e.g. *rabbit*
 
     """
-    check('snapctl', 'start', 'microstack.{}'.format(service), '--enable')
+    check("snapctl", "start", "microstack.{}".format(service), "--enable")
 
 
 def disable(service: str) -> None:
@@ -169,7 +177,7 @@ def disable(service: str) -> None:
                     e.g. *rabbit*
 
     """
-    check('snapctl', 'stop', 'microstack.{}'.format(service), '--disable')
+    check("snapctl", "stop", "microstack.{}".format(service), "--disable")
 
 
 def config_get(*keys):
@@ -180,7 +188,7 @@ def config_get(*keys):
     :rtype: str or int or float or bool or dict or list
     """
     if keys:
-        return json.loads(check_output('snapctl', 'get', '-t', *keys))
+        return json.loads(check_output("snapctl", "get", "-t", *keys))
     else:
         return None
 
@@ -191,7 +199,7 @@ def config_set(**kwargs):
     :param kwargs dict[str, str]: Values to set in the snap configuration.
     """
     if kwargs:
-        check('snapctl', 'set', *[f'{k}={v}' for k, v in kwargs.items()])
+        check("snapctl", "set", *[f"{k}={v}" for k, v in kwargs.items()])
 
 
 def download(url: str, output: str) -> None:
@@ -200,36 +208,34 @@ def download(url: str, output: str) -> None:
 
 
 def fallback_source_address():
-    '''Get an ip address through which the default gateway is accessible.
+    """Get an ip address through which the default gateway is accessible.
 
     Note that Linux kernel allows multiple default gateways to be present with
     the same or different metrics which may lead to unexpected behaviors. This
     situation is unlikely but needs to be taken into account.
-    '''
+    """
     try:
-        interface = netifaces.gateways()['default'][netifaces.AF_INET][1]
-        return netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
+        interface = netifaces.gateways()["default"][netifaces.AF_INET][1]
+        return netifaces.ifaddresses(interface)[netifaces.AF_INET][0]["addr"]
     except (KeyError, IndexError):
-        log.exception('Failed to get ip address!')
+        log.exception("Failed to get ip address!")
         return None
 
 
 def default_source_address():
-    '''Get a default source address.'''
-    return config_get('config.network.default-source-ip')
+    """Get a default source address."""
+    return config_get("config.network.default-source-ip")
 
 
 def default_network():
-    """Get info about the default netowrk.
-
-    """
-    gateway, interface = netifaces.gateways()['default'][netifaces.AF_INET]
-    netmask = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['netmask']
-    ip_address = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
+    """Get info about the default network."""
+    gateway, interface = netifaces.gateways()["default"][netifaces.AF_INET]
+    netmask = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]["netmask"]
+    ip_address = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]["addr"]
     bits = netaddr.IPAddress(netmask).netmask_bits()
     # TODO: better way to do this!
-    cidr = gateway.split('.')
-    cidr[-1] = '0/{}'.format(bits)
-    cidr = '.'.join(cidr)
+    cidr = gateway.split(".")
+    cidr[-1] = "0/{}".format(bits)
+    cidr = ".".join(cidr)
 
     return ip_address, gateway, cidr

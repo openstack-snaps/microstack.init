@@ -34,13 +34,23 @@ from os import path
 from pathlib import Path
 from shutil import copyfile
 
-from init import shell
-from init.shell import (check, call, check_output, sql, nc_wait, log_wait,
-                        restart, download, disable, enable)
-from init.config import Env, log
-from init import tls
-from init.questions.question import Question
-from init.questions import clustering, network, tls, uninstall  # noqa F401
+from microstack_init import shell
+from microstack_init.shell import (
+    check,
+    call,
+    check_output,
+    sql,
+    nc_wait,
+    log_wait,
+    restart,
+    download,
+    disable,
+    enable,
+)
+from microstack_init.config import Env, log
+from microstack_init import tls
+from microstack_init.questions.question import Question
+from microstack_init.questions import clustering, network, tls, uninstall  # noqa F401
 
 
 _env = Env().get_env()
@@ -56,9 +66,9 @@ class ConfigError(Exception):
 class Clustering(Question):
     """Possibly configure clustering."""
 
-    _type = 'boolean'
-    _question = 'Would you like to configure clustering?'
-    config_key = 'config.is-clustered'
+    _type = "boolean"
+    _question = "Would you like to configure clustering?"
+    config_key = "config.is-clustered"
     interactive = True
     # Overrides to be used when options are explicitly specified via
     # command-line arguments.
@@ -66,7 +76,7 @@ class Clustering(Question):
     role_interactive = True
 
     def yes(self, answer: bool):
-        log.info('Configuring clustering ...')
+        log.info("Configuring clustering ...")
 
         role_question = clustering.Role()
         if not (self.interactive and self.role_interactive):
@@ -91,43 +101,50 @@ class Clustering(Question):
             connection_string_question.interactive = False
         connection_string_question.ask()
 
-        role = shell.config_get('config.cluster.role')
+        role = shell.config_get("config.cluster.role")
 
         # Generate the compute private key for all nodes since they all act as
         # compute nodes.
         compute_key_path = Path(
-            shell.config_get('config.tls.compute.key-path'))
+            shell.config_get("config.tls.compute.key-path")
+        )
         tls.create_or_get_private_key(compute_key_path)
 
-        if role == 'compute':
-            log.info('Setting up as a compute node.')
+        if role == "compute":
+            log.info("Setting up as a compute node.")
             # Gets config info and sets local env vals.
-            check_output('microstack_join')
-            shell.config_set(**{
-                'config.services.control-plane': 'false',
-                'config.services.hypervisor': 'true',
-            })
+            check_output("microstack_join")
+            shell.config_set(
+                **{
+                    "config.services.control-plane": "false",
+                    "config.services.hypervisor": "true",
+                }
+            )
 
-        if role == 'control':
-            log.info('Setting up as a control node.')
-            shell.config_set(**{
-                'config.services.control-plane': 'true',
-                'config.services.hypervisor': 'true',
-            })
+        if role == "control":
+            log.info("Setting up as a control node.")
+            shell.config_set(
+                **{
+                    "config.services.control-plane": "true",
+                    "config.services.hypervisor": "true",
+                }
+            )
             # Generate a self-signed certificate for the clustering service.
             cert_path, key_path = (
-                Path(shell.config_get('config.cluster.tls-cert-path')),
-                Path(shell.config_get('config.cluster.tls-key-path')),
+                Path(shell.config_get("config.cluster.tls-cert-path")),
+                Path(shell.config_get("config.cluster.tls-key-path")),
             )
             tls.generate_self_signed(
-                cert_path, key_path,
-                fingerprint_config='config.cluster.fingerprint')
+                cert_path,
+                key_path,
+                fingerprint_config="config.cluster.fingerprint",
+            )
 
         # Write templates
-        check('snap-openstack', 'setup')
+        check("snap-openstack", "setup")
 
     def no(self, answer: bool):
-        disable('cluster-uwsgi')
+        disable("cluster-uwsgi")
 
 
 class ConfigQuestion(Question):
@@ -138,6 +155,7 @@ class ConfigQuestion(Question):
     question class.
 
     """
+
     def after(self, answer):
         """Our value has been saved.
 
@@ -149,24 +167,24 @@ class ConfigQuestion(Question):
         ConfigQuestions have been asked.
 
         """
-        check('snap-openstack', 'setup')
+        check("snap-openstack", "setup")
 
         # TODO: get rid of this? (I think that it has become redundant)
-        mstackrc = '{SNAP_COMMON}/etc/microstack.rc'.format(**_env)
-        with open(mstackrc, 'r') as rc_file:
+        mstackrc = "{SNAP_COMMON}/etc/microstack.rc".format(**_env)
+        with open(mstackrc, "r") as rc_file:
             for line in rc_file.readlines():
-                if not line.startswith('export'):
+                if not line.startswith("export"):
                     continue
-                key, val = line[7:].split('=')
+                key, val = line[7:].split("=")
                 _env[key.strip()] = val.strip()
 
 
 class DnsServers(ConfigQuestion):
     """Provide default DNS forwarders for MicroStack to use."""
 
-    _type = 'string'
-    _question = 'Upstream DNS servers to be used by instances (VMs)'
-    config_key = 'config.network.dns-servers'
+    _type = "string"
+    _question = "Upstream DNS servers to be used by instances (VMs)"
+    config_key = "config.network.dns-servers"
 
     def yes(self, answer: str):
         # Neutron is not actually started at this point, so we don't
@@ -180,9 +198,9 @@ class DnsServers(ConfigQuestion):
 class DnsDomain(ConfigQuestion):
     """An internal DNS domain to be used for ML2 DNS."""
 
-    _type = 'string'
-    _question = 'An internal DNS domain to be used for ML2 DNS'
-    config_key = 'config.network.dns-domain'
+    _type = "string"
+    _question = "An internal DNS domain to be used for ML2 DNS"
+    config_key = "config.network.dns-domain"
 
     def yes(self, answer: str):
         # Neutron is not actually started at this point, so we don't
@@ -194,129 +212,153 @@ class DnsDomain(ConfigQuestion):
 
 
 class NetworkSettings(Question):
-    """Write network settings, and """
-    _type = 'auto'
-    _question = 'Network settings'
+    """Write network settings, and"""
+
+    _type = "auto"
+    _question = "Network settings"
 
     def yes(self, answer):
-        log.info('Configuring networking ...')
+        log.info("Configuring networking ...")
 
-        role = check_output('snapctl', 'get', 'config.cluster.role')
+        role = check_output("snapctl", "get", "config.cluster.role")
 
         # Enable and start the services.
-        enable('ovsdb-server')
-        enable('ovs-vswitchd')
-        enable('ovn-ovsdb-server-sb')
-        enable('ovn-ovsdb-server-nb')
+        enable("ovsdb-server")
+        enable("ovs-vswitchd")
+        enable("ovn-ovsdb-server-sb")
+        enable("ovn-ovsdb-server-nb")
 
         network.ExtGateway().ask()
         network.ExtCidr().ask()
-        control_ip = check_output('snapctl', 'get',
-                                  'config.network.control-ip')
+        control_ip = check_output(
+            "snapctl", "get", "config.network.control-ip"
+        )
 
         # The cacert will always be the same, regardless of the current
         # node's role (control or compute)
-        ssl_cacert = shell.config_get('config.tls.cacert-path')
+        ssl_cacert = shell.config_get("config.tls.cacert-path")
         system_id = socket.getfqdn()
 
-        if role == 'control':
-            nb_conn = 'unix:{SNAP_COMMON}/run/ovn/ovnnb_db.sock'.format(**_env)
-            sb_conn = 'unix:{SNAP_COMMON}/run/ovn/ovnsb_db.sock'.format(**_env)
-            ssl_key = shell.config_get('config.tls.key-path')
-            ssl_cert = shell.config_get('config.tls.cert-path')
+        if role == "control":
+            nb_conn = "unix:{SNAP_COMMON}/run/ovn/ovnnb_db.sock".format(**_env)
+            sb_conn = "unix:{SNAP_COMMON}/run/ovn/ovnsb_db.sock".format(**_env)
+            ssl_key = shell.config_get("config.tls.key-path")
+            ssl_cert = shell.config_get("config.tls.cert-path")
             ovn_encap_ip = control_ip
-        elif role == 'compute':
+        elif role == "compute":
             # Use the local compute node's ssl_key and ssl_cert for OVN
             # configuration.
-            ssl_key = shell.config_get('config.tls.compute.key-path')
-            ssl_cert = shell.config_get('config.tls.compute.cert-path')
-            sb_conn = f'ssl:{control_ip}:6642'
+            ssl_key = shell.config_get("config.tls.compute.key-path")
+            ssl_cert = shell.config_get("config.tls.compute.cert-path")
+            sb_conn = f"ssl:{control_ip}:6642"
             # Not used by any compute node services.
-            nb_conn = ''
-            compute_ip = check_output('snapctl', 'get',
-                                      'config.network.compute-ip')
+            nb_conn = ""
+            compute_ip = check_output(
+                "snapctl", "get", "config.network.compute-ip"
+            )
             # Set the IP address to be used for a tunnel endpoint.
             ovn_encap_ip = compute_ip
         else:
-            raise Exception(f'Unexpected node role: {role}')
+            raise Exception(f"Unexpected node role: {role}")
 
         # ovn-controller does not start unless both the ovn-encap-ip and the
         # ovn-encap-type are set.
-        log.debug('Configuring Open vSwitch geneve tunnels and system id. '
-                  f'ovn-encap-ip = {ovn_encap_ip}, system-id = {system_id}')
+        log.debug(
+            "Configuring Open vSwitch geneve tunnels and system id. "
+            f"ovn-encap-ip = {ovn_encap_ip}, system-id = {system_id}"
+        )
         check_output(
-            'ovs-vsctl',
-            'set', 'open', '.', 'external-ids:ovn-encap-type=geneve',
-            '--',
-            'set', 'open', '.', f'external-ids:ovn-encap-ip={ovn_encap_ip}',
-            '--',
-            'set', 'open', '.', f'external-ids:system-id={system_id}'
+            "ovs-vsctl",
+            "set",
+            "open",
+            ".",
+            "external-ids:ovn-encap-type=geneve",
+            "--",
+            "set",
+            "open",
+            ".",
+            f"external-ids:ovn-encap-ip={ovn_encap_ip}",
+            "--",
+            "set",
+            "open",
+            ".",
+            f"external-ids:system-id={system_id}",
         )
 
         # Configure the TLS settings for Open vSwitch and OVN. Note, the
         # ovn-wrapper is used as it has the necessary configuration to use
         # socket connections.
-        log.debug('Configuring TLS for Open vSwitch and OVN')
-        check_output(
-            'ovs-vsctl', 'set-ssl', ssl_key, ssl_cert, ssl_cacert
-        )
+        log.debug("Configuring TLS for Open vSwitch and OVN")
+        check_output("ovs-vsctl", "set-ssl", ssl_key, ssl_cert, ssl_cacert)
 
-        if role == 'control':
+        if role == "control":
             check_output(
-                'ovn-wrapper', 'ovn-sbctl', 'set-ssl', ssl_key, ssl_cert,
-                ssl_cacert
+                "ovn-wrapper",
+                "ovn-sbctl",
+                "set-ssl",
+                ssl_key,
+                ssl_cert,
+                ssl_cacert,
             )
             check_output(
-                'ovn-wrapper', 'ovn-sbctl', 'set-connection', 'pssl:6642'
+                "ovn-wrapper", "ovn-sbctl", "set-connection", "pssl:6642"
             )
             # Note: by default, the control node will serve as a gateway node
             # for the cluster. Only set the enable-chassis-as-gw for the
             # control node.
             check_output(
-                'ovs-vsctl', 'set', 'open', '.',
-                'external-ids:ovn-cms-options=enable-chassis-as-gw'
+                "ovs-vsctl",
+                "set",
+                "open",
+                ".",
+                "external-ids:ovn-cms-options=enable-chassis-as-gw",
             )
-            restart('ovn-ovsdb-server-sb')
+            restart("ovn-ovsdb-server-sb")
 
         # Configure OVN SB and NB sockets based on the role node. For
         # single-node deployments there is no need to use a TCP socket.
-        check_output('snapctl', 'set',
-                     f'config.network.ovn-nb-connection={nb_conn}')
-        check_output('snapctl', 'set',
-                     f'config.network.ovn-sb-connection={sb_conn}')
+        check_output(
+            "snapctl", "set", f"config.network.ovn-nb-connection={nb_conn}"
+        )
+        check_output(
+            "snapctl", "set", f"config.network.ovn-sb-connection={sb_conn}"
+        )
 
         # Set SB database connection details for ovn-controller to pick up.
         check_output(
-            'ovs-vsctl', 'set', 'open', '.',
-            f'external-ids:ovn-remote={sb_conn}'
+            "ovs-vsctl",
+            "set",
+            "open",
+            ".",
+            f"external-ids:ovn-remote={sb_conn}",
         )
 
         # Now that we have default or overridden values, setup the
         # bridge and write all the proper values into our config
         # files.
-        check('setup-br-ex')
-        check('snap-openstack', 'setup')
+        check("setup-br-ex")
+        check("snap-openstack", "setup")
 
-        if role == 'control':
-            enable('ovn-northd')
-            enable('ovn-controller')
+        if role == "control":
+            enable("ovn-northd")
+            enable("ovn-controller")
 
         network.IpForwarding().ask()
 
 
 class OsPassword(ConfigQuestion):
-    _type = 'string'
-    _question = 'Openstack Admin Password'
-    config_key = 'config.credentials.keystone-password'
+    _type = "string"
+    _question = "Openstack Admin Password"
+    config_key = "config.credentials.keystone-password"
 
     def yes(self, answer):
-        _env['keystone_password'] = answer
+        _env["keystone_password"] = answer
 
 
 class VmSwappiness(Question):
 
-    _type = 'boolean'
-    _question = 'Do you wish to set vm swappiness to 1? (recommended)'
+    _type = "boolean"
+    _question = "Do you wish to set vm swappiness to 1? (recommended)"
 
     def yes(self, answer: str) -> None:
         # TODO
@@ -325,8 +367,8 @@ class VmSwappiness(Question):
 
 class FileHandleLimits(Question):
 
-    _type = 'boolean'
-    _question = 'Do you wish to increase file handle limits? (recommended)'
+    _type = "boolean"
+    _question = "Do you wish to increase file handle limits? (recommended)"
 
     def yes(self, answer: str) -> None:
         # TODO
@@ -335,60 +377,67 @@ class FileHandleLimits(Question):
 
 class DashboardAccess(ConfigQuestion):
 
-    _type = 'string'
-    _question = 'Dashboard allowed hosts.'
-    config_key = 'config.network.dashboard-allowed-hosts'
+    _type = "string"
+    _question = "Dashboard allowed hosts."
+    config_key = "config.network.dashboard-allowed-hosts"
 
     def yes(self, answer):
-        log.info("Opening horizon dashboard up to {hosts}".format(
-            hosts=answer))
+        log.info(
+            "Opening horizon dashboard up to {hosts}".format(hosts=answer)
+        )
 
 
 class TlsCertificates(Question):
 
-    _type = 'boolean'
-    _question = 'Do you wish to generate a self-signed certificate for TLS?'
-    config_key = 'config.tls.generate-self-signed'
+    _type = "boolean"
+    _question = "Do you wish to generate a self-signed certificate for TLS?"
+    config_key = "config.tls.generate-self-signed"
 
     def yes(self, answer: str) -> None:
-        role = shell.config_get('config.cluster.role')
+        role = shell.config_get("config.cluster.role")
 
-        if role == 'control':
-            log.info('Generating TLS Certificate and Key')
+        if role == "control":
+            log.info("Generating TLS Certificate and Key")
             cert_path, key_path = (
-                Path(shell.config_get('config.tls.cert-path')),
-                Path(shell.config_get('config.tls.key-path')),
+                Path(shell.config_get("config.tls.cert-path")),
+                Path(shell.config_get("config.tls.key-path")),
             )
-            control_ip = shell.config_get('config.network.control-ip')
-            tls.generate_self_signed(cert_path, key_path,
-                                     ip=control_ip)
-            copyfile(Path(shell.config_get('config.tls.cert-path')),
-                     Path(shell.config_get('config.tls.cacert-path')))
-            restart('nginx')
+            control_ip = shell.config_get("config.network.control-ip")
+            tls.generate_self_signed(cert_path, key_path, ip=control_ip)
+            copyfile(
+                Path(shell.config_get("config.tls.cert-path")),
+                Path(shell.config_get("config.tls.cacert-path")),
+            )
+            restart("nginx")
 
-        elif role == 'compute':
-            log.warning('TLS certificate generation can only be performed on '
-                        'control node')
+        elif role == "compute":
+            log.warning(
+                "TLS certificate generation can only be performed on "
+                "control node"
+            )
 
     def no(self, answer: str):
-        log.info('TLS certificates must be provided: config.tls.cacert-path, '
-                 'config.tls.cert-path, and config.tls.key-path.')
-        restart('nginx')
+        log.info(
+            "TLS certificates must be provided: config.tls.cacert-path, "
+            "config.tls.cert-path, and config.tls.key-path."
+        )
+        restart("nginx")
 
 
 class RabbitMq(Question):
     """Wait for Rabbit to start, then setup permissions."""
 
-    _type = 'boolean'
-    config_key = 'config.services.control-plane'
+    _type = "boolean"
+    config_key = "config.services.control-plane"
 
     def _wait(self) -> None:
-        enable('rabbitmq-server')
+        enable("rabbitmq-server")
         rabbit_port = check_output(
-            'snapctl', 'get', 'config.network.ports.rabbit')
-        nc_wait(_env['control_ip'], rabbit_port)
-        log_file = '{SNAP_COMMON}/log/rabbitmq/startup_log'.format(**_env)
-        log_wait(log_file, 'completed')
+            "snapctl", "get", "config.network.ports.rabbit"
+        )
+        nc_wait(_env["control_ip"], rabbit_port)
+        log_file = "{SNAP_COMMON}/log/rabbitmq/startup_log".format(**_env)
+        log_wait(log_file, "completed")
 
     def _configure(self) -> None:
         """Configure RabbitMQ
@@ -396,68 +445,86 @@ class RabbitMq(Question):
         (actions may have already been run, in which case we fail silently).
         """
         # Configure RabbitMQ
-        check('{SNAP}/bin/setup-rabbit'.format(**_env))
+        check("{SNAP}/bin/setup-rabbit".format(**_env))
 
     def yes(self, answer: str) -> None:
-        log.info('Waiting for RabbitMQ to start ...')
+        log.info("Waiting for RabbitMQ to start ...")
         self._wait()
-        log.info('RabbitMQ started!')
-        log.info('Configuring RabbitMQ ...')
+        log.info("RabbitMQ started!")
+        log.info("Configuring RabbitMQ ...")
         self._configure()
-        log.info('RabbitMQ Configured!')
+        log.info("RabbitMQ Configured!")
 
     def no(self, answer: str):
-        log.info('Disabling local rabbit ...')
-        disable('rabbitmq-server')
+        log.info("Disabling local rabbit ...")
+        disable("rabbitmq-server")
 
 
 class DatabaseSetup(Question):
     """Setup keystone permissions, then setup all databases."""
 
-    _type = 'boolean'
-    config_key = 'config.services.control-plane'
+    _type = "boolean"
+    config_key = "config.services.control-plane"
 
     def _wait(self) -> None:
-        enable('mysqld')
+        enable("mysqld")
         mysql_port = check_output(
-            'snapctl', 'get', 'config.network.ports.mysql')
-        nc_wait(_env['control_ip'], mysql_port)
-        log_wait('{SNAP_COMMON}/log/mysql/error.log'.format(**_env),
-                 'mysqld: ready for connections.')
+            "snapctl", "get", "config.network.ports.mysql"
+        )
+        nc_wait(_env["control_ip"], mysql_port)
+        log_wait(
+            "{SNAP_COMMON}/log/mysql/error.log".format(**_env),
+            "mysqld: ready for connections.",
+        )
 
     def _create_dbs(self) -> None:
-        db_creds = shell.config_get('config.credentials')
+        db_creds = shell.config_get("config.credentials")
         for service_user, db_name in (
-            ('neutron', 'neutron'),
-            ('nova', 'nova'),
-            ('nova', 'nova_api'),
-            ('nova', 'nova_cell0'),
-            ('cinder', 'cinder'),
-            ('glance', 'glance'),
-            ('keystone', 'keystone'),
-            ('placement', 'placement')
+            ("neutron", "neutron"),
+            ("nova", "nova"),
+            ("nova", "nova_api"),
+            ("nova", "nova_cell0"),
+            ("cinder", "cinder"),
+            ("glance", "glance"),
+            ("keystone", "keystone"),
+            ("placement", "placement"),
         ):
-            db_password = db_creds[f'{service_user}-password']
-            sql("CREATE USER IF NOT EXISTS '{user}'@'%'"
+            db_password = db_creds[f"{service_user}-password"]
+            sql(
+                "CREATE USER IF NOT EXISTS '{user}'@'%'"
                 " IDENTIFIED BY '{db_password}';".format(
-                    user=service_user, db_password=db_password, **_env))
+                    user=service_user, db_password=db_password, **_env
+                )
+            )
             sql("CREATE DATABASE IF NOT EXISTS `{db}`;".format(db=db_name))
-            sql("GRANT ALL PRIVILEGES ON {db}.* TO '{user}'@'%';"
-                "".format(db=db_name, user=service_user, **_env))
+            sql(
+                "GRANT ALL PRIVILEGES ON {db}.* TO '{user}'@'%';"
+                "".format(db=db_name, user=service_user, **_env)
+            )
 
     def _bootstrap(self) -> None:
 
-        if call('openstack', 'user', 'show', 'admin'):
+        if call("openstack", "user", "show", "admin"):
             return
 
-        bootstrap_url = 'https://{control_ip}:5000/v3/'.format(**_env)
+        bootstrap_url = "https://{control_ip}:5000/v3/".format(**_env)
 
-        check('snap-openstack', 'launch', 'keystone-manage', 'bootstrap',
-              '--bootstrap-password', _env['keystone_password'],
-              '--bootstrap-admin-url', bootstrap_url,
-              '--bootstrap-internal-url', bootstrap_url,
-              '--bootstrap-public-url', bootstrap_url,
-              '--bootstrap-region-id', 'microstack')
+        check(
+            "snap-openstack",
+            "launch",
+            "keystone-manage",
+            "bootstrap",
+            "--bootstrap-password",
+            _env["keystone_password"],
+            "--bootstrap-admin-url",
+            bootstrap_url,
+            "--bootstrap-internal-url",
+            bootstrap_url,
+            "--bootstrap-public-url",
+            bootstrap_url,
+            "--bootstrap-region-id",
+            "microstack",
+        )
 
     def yes(self, answer: str) -> None:
         """Setup Databases.
@@ -466,445 +533,711 @@ class DatabaseSetup(Question):
         fernet keys and create the service project.
 
         """
-        log.info('Waiting for MySQL server to start ...')
+        log.info("Waiting for MySQL server to start ...")
         self._wait()
-        log.info('Mysql server started! Creating databases ...')
+        log.info("Mysql server started! Creating databases ...")
         self._create_dbs()
 
-        check('snapctl', 'set', 'database.ready=true')
+        check("snapctl", "set", "database.ready=true")
 
-        enable('nginx')
+        enable("nginx")
 
-        log.info('Configuring Keystone Fernet Keys ...')
-        check('snap-openstack', 'launch', 'keystone-manage',
-              'fernet_setup', '--keystone-user', 'root',
-              '--keystone-group', 'root')
-        check('snap-openstack', 'launch', 'keystone-manage', 'db_sync')
+        log.info("Configuring Keystone Fernet Keys ...")
+        check(
+            "snap-openstack",
+            "launch",
+            "keystone-manage",
+            "fernet_setup",
+            "--keystone-user",
+            "root",
+            "--keystone-group",
+            "root",
+        )
+        check("snap-openstack", "launch", "keystone-manage", "db_sync")
 
-        enable('keystone-uwsgi')
+        enable("keystone-uwsgi")
 
-        log.info('Bootstrapping Keystone ...')
+        log.info("Bootstrapping Keystone ...")
         self._bootstrap()
 
-        log.info('Creating service project ...')
-        if not call('openstack', 'project', 'show', 'service'):
-            check('openstack', 'project', 'create', '--domain',
-                  'default', '--description', '"Service Project"',
-                  'service')
+        log.info("Creating service project ...")
+        if not call("openstack", "project", "show", "service"):
+            check(
+                "openstack",
+                "project",
+                "create",
+                "--domain",
+                "default",
+                "--description",
+                '"Service Project"',
+                "service",
+            )
 
-        log.info('Keystone configured!')
+        log.info("Keystone configured!")
 
     def no(self, answer: str):
         # We assume that the control node has a connection setup for us.
-        check('snapctl', 'set', 'database.ready=true')
+        check("snapctl", "set", "database.ready=true")
 
-        log.info('Disabling local MySQL ...')
-        disable('mysqld')
+        log.info("Disabling local MySQL ...")
+        disable("mysqld")
 
 
 class NovaHypervisor(Question):
     """Run the nova compute hypervisor."""
 
-    _type = 'boolean'
-    config_key = 'config.services.hypervisor'
+    _type = "boolean"
+    config_key = "config.services.hypervisor"
 
     def yes(self, answer):
-        log.info('Configuring nova compute hypervisor ...')
+        log.info("Configuring nova compute hypervisor ...")
 
         self._maybe_enable_emulation()
-        check('snap-openstack', 'setup')
+        check("snap-openstack", "setup")
 
-        enable('libvirtd')
-        enable('virtlogd')
-        enable('nova-compute')
+        enable("libvirtd")
+        enable("virtlogd")
+        enable("nova-compute")
 
     def no(self, answer):
-        log.info('Disabling nova compute service ...')
-        disable('libvirtd')
-        disable('virtlogd')
-        disable('nova-compute')
+        log.info("Disabling nova compute service ...")
+        disable("libvirtd")
+        disable("virtlogd")
+        disable("nova-compute")
 
     def _maybe_enable_emulation(self):
-        log.info('Checking virtualization extensions presence on the host')
+        log.info("Checking virtualization extensions presence on the host")
         # Use KVM if it is supported, alternatively fall back to software
         # emulation.
         if self._is_hw_virt_supported() and self._is_kvm_api_available():
-            log.info('Hardware virtualization is supported - KVM will be used'
-                     ' for Nova instances')
-            shell.config_set(**{'config.nova.virt-type': 'kvm'})
-            shell.config_set(**{'config.nova.cpu-mode': 'host-passthrough'})
+            log.info(
+                "Hardware virtualization is supported - KVM will be used"
+                " for Nova instances"
+            )
+            shell.config_set(**{"config.nova.virt-type": "kvm"})
+            shell.config_set(**{"config.nova.cpu-mode": "host-passthrough"})
         else:
-            log.warning('Hardware virtualization is not supported - software'
-                        ' emulation will be used for Nova instances')
-            shell.config_set(**{'config.nova.virt-type': 'qemu'})
-            shell.config_set(**{'config.nova.cpu-mode': 'host-model'})
+            log.warning(
+                "Hardware virtualization is not supported - software"
+                " emulation will be used for Nova instances"
+            )
+            shell.config_set(**{"config.nova.virt-type": "qemu"})
+            shell.config_set(**{"config.nova.cpu-mode": "host-model"})
 
     @staticmethod
     def _is_kvm_api_available():
-        kvm_devpath = '/dev/kvm'
+        kvm_devpath = "/dev/kvm"
         if not os.path.exists(kvm_devpath):
-            log.warning(f'{kvm_devpath} does not exist')
+            log.warning(f"{kvm_devpath} does not exist")
             return False
         elif not os.access(kvm_devpath, os.R_OK | os.W_OK):
-            log.warning(f'{kvm_devpath} is not RW-accessible')
+            log.warning(f"{kvm_devpath} is not RW-accessible")
             return False
         kvm_dev = os.stat(kvm_devpath)
         if not stat.S_ISCHR(kvm_dev.st_mode):
-            log.warning(f'{kvm_devpath} is not a character device')
+            log.warning(f"{kvm_devpath} is not a character device")
             return False
         major = os.major(kvm_dev.st_rdev)
         minor = os.minor(kvm_dev.st_rdev)
         if major != 10:
             log.warning(
-                f'{kvm_devpath} has an unexpected major number: {major}')
+                f"{kvm_devpath} has an unexpected major number: {major}"
+            )
             return False
         elif minor != 232:
             log.warning(
-                f'{kvm_devpath} has an unexpected minor number: {minor}')
+                f"{kvm_devpath} has an unexpected minor number: {minor}"
+            )
             return False
         return True
 
     @staticmethod
     def _is_hw_virt_supported():
         # Sample lscpu outputs: util-linux/tests/expected/lscpu/
-        cpu_info = json.loads(check_output('lscpu', '-J'))['lscpu']
-        architecture = next(filter(lambda x: x['field'] == 'Architecture:',
-                                   cpu_info), None)['data'].split()
-        flags = next(filter(lambda x: x['field'] == 'Flags:', cpu_info),
-                     None)
+        cpu_info = json.loads(check_output("lscpu", "-J"))["lscpu"]
+        architecture = next(
+            filter(lambda x: x["field"] == "Architecture:", cpu_info), None
+        )["data"].split()
+        flags = next(filter(lambda x: x["field"] == "Flags:", cpu_info), None)
         if flags is not None:
-            flags = flags['data'].split()
+            flags = flags["data"].split()
 
-        vendor_id = next(filter(lambda x: x['field'] == 'Vendor ID:',
-                                cpu_info), None)
+        vendor_id = next(
+            filter(lambda x: x["field"] == "Vendor ID:", cpu_info), None
+        )
         if vendor_id is not None:
-            vendor_id = vendor_id['data']
+            vendor_id = vendor_id["data"]
 
         # Mimic virt-host-validate code (from libvirt) and assume nested
         # support on ppc64 LE or BE.
-        if architecture in ['ppc64', 'ppc64le']:
+        if architecture in ["ppc64", "ppc64le"]:
             return True
         elif vendor_id is not None and flags is not None:
-            if vendor_id == 'AuthenticAMD' and 'svm' in flags:
+            if vendor_id == "AuthenticAMD" and "svm" in flags:
                 return True
-            elif vendor_id == 'GenuineIntel' and 'vmx' in flags:
+            elif vendor_id == "GenuineIntel" and "vmx" in flags:
                 return True
-            elif vendor_id == 'IBM/S390' and 'sie' in flags:
+            elif vendor_id == "IBM/S390" and "sie" in flags:
                 return True
-            elif vendor_id == 'ARM':
+            elif vendor_id == "ARM":
                 # ARM 8.3-A added nested virtualization support but it is yet
                 # to land upstream https://lwn.net/Articles/812280/ at the time
                 # of writing (Nov 2020).
-                log.warning('Nested virtualization is not supported on ARM'
-                            ' - will use emulation')
+                log.warning(
+                    "Nested virtualization is not supported on ARM"
+                    " - will use emulation"
+                )
                 return False
             else:
-                log.warning('Unable to determine hardware virtualization'
-                            f' support by CPU vendor id "{vendor_id}":'
-                            ' assuming it is not supported.')
+                log.warning(
+                    "Unable to determine hardware virtualization"
+                    f' support by CPU vendor id "{vendor_id}":'
+                    " assuming it is not supported."
+                )
                 return False
         else:
-            log.warning('Unable to determine hardware virtualization support'
-                        ' by the output of lscpu: assuming it is not'
-                        ' supported')
+            log.warning(
+                "Unable to determine hardware virtualization support"
+                " by the output of lscpu: assuming it is not"
+                " supported"
+            )
             return False
 
 
 class NovaSpiceConsoleSetup(Question):
     """Run the Spice HTML5 console proxy service"""
 
-    _type = 'boolean'
-    config_key = 'config.services.spice-console'
+    _type = "boolean"
+    config_key = "config.services.spice-console"
 
     def yes(self, answer):
-        log.info('Configuring the Spice HTML5 console service...')
-        enable('nova-spicehtml5proxy')
+        log.info("Configuring the Spice HTML5 console service...")
+        enable("nova-spicehtml5proxy")
 
     def no(self, answer):
-        log.info('Disabling nova compute service ...')
-        disable('nova-spicehtml5proxy')
+        log.info("Disabling nova compute service ...")
+        disable("nova-spicehtml5proxy")
 
 
 class PlacementSetup(Question):
     """Setup Placement services."""
 
-    _type = 'boolean'
-    config_key = 'config.services.control-plane'
+    _type = "boolean"
+    config_key = "config.services.control-plane"
 
     def yes(self, answer: str) -> None:
-        log.info('Configuring the Placement service...')
+        log.info("Configuring the Placement service...")
 
-        if not call('openstack', 'user', 'show', 'placement'):
+        if not call("openstack", "user", "show", "placement"):
             check(
-                'openstack', 'user', 'create', '--domain', 'default',
-                '--password',
-                shell.config_get('config.credentials.placement-password'),
-                'placement',
+                "openstack",
+                "user",
+                "create",
+                "--domain",
+                "default",
+                "--password",
+                shell.config_get("config.credentials.placement-password"),
+                "placement",
             )
-            check('openstack', 'role', 'add', '--project', 'service',
-                  '--user', 'placement', 'admin')
+            check(
+                "openstack",
+                "role",
+                "add",
+                "--project",
+                "service",
+                "--user",
+                "placement",
+                "admin",
+            )
 
-        if not call('openstack', 'service', 'show', 'placement'):
-            check('openstack', 'service', 'create', '--name',
-                  'placement', '--description', '"Placement API"',
-                  'placement')
+        if not call("openstack", "service", "show", "placement"):
+            check(
+                "openstack",
+                "service",
+                "create",
+                "--name",
+                "placement",
+                "--description",
+                '"Placement API"',
+                "placement",
+            )
 
-            for endpoint in ['public', 'internal', 'admin']:
-                call('openstack', 'endpoint', 'create', '--region',
-                     'microstack', 'placement', endpoint,
-                     'https://{control_ip}:8778'.format(**_env))
+            for endpoint in ["public", "internal", "admin"]:
+                call(
+                    "openstack",
+                    "endpoint",
+                    "create",
+                    "--region",
+                    "microstack",
+                    "placement",
+                    endpoint,
+                    "https://{control_ip}:8778".format(**_env),
+                )
 
-        log.info('Running Placement DB migrations...')
-        check('snap-openstack', 'launch', 'placement-manage', 'db', 'sync')
-        enable('placement-uwsgi')
+        log.info("Running Placement DB migrations...")
+        check("snap-openstack", "launch", "placement-manage", "db", "sync")
+        enable("placement-uwsgi")
 
     def no(self, answer):
-        log.info('Disabling the Placement service...')
-        disable('placement-uwsgi')
+        log.info("Disabling the Placement service...")
+        disable("placement-uwsgi")
 
 
 class NovaControlPlane(Question):
     """Create all control plane nova users and services."""
 
-    _type = 'boolean'
-    config_key = 'config.services.control-plane'
+    _type = "boolean"
+    config_key = "config.services.control-plane"
 
     def _flavors(self) -> None:
         """Create default flavors."""
 
-        if not call('openstack', 'flavor', 'show', 'm1.tiny'):
-            check('openstack', 'flavor', 'create', '--id', '1',
-                  '--ram', '512', '--disk', '1', '--vcpus', '1', 'm1.tiny')
-        if not call('openstack', 'flavor', 'show', 'm1.small'):
-            check('openstack', 'flavor', 'create', '--id', '2',
-                  '--ram', '2048', '--disk', '20', '--vcpus', '1', 'm1.small')
-        if not call('openstack', 'flavor', 'show', 'm1.medium'):
-            check('openstack', 'flavor', 'create', '--id', '3',
-                  '--ram', '4096', '--disk', '20', '--vcpus', '2', 'm1.medium')
-        if not call('openstack', 'flavor', 'show', 'm1.large'):
-            check('openstack', 'flavor', 'create', '--id', '4',
-                  '--ram', '8192', '--disk', '20', '--vcpus', '4', 'm1.large')
-        if not call('openstack', 'flavor', 'show', 'm1.xlarge'):
-            check('openstack', 'flavor', 'create', '--id', '5',
-                  '--ram', '16384', '--disk', '20', '--vcpus', '8',
-                  'm1.xlarge')
+        if not call("openstack", "flavor", "show", "m1.tiny"):
+            check(
+                "openstack",
+                "flavor",
+                "create",
+                "--id",
+                "1",
+                "--ram",
+                "512",
+                "--disk",
+                "1",
+                "--vcpus",
+                "1",
+                "m1.tiny",
+            )
+        if not call("openstack", "flavor", "show", "m1.small"):
+            check(
+                "openstack",
+                "flavor",
+                "create",
+                "--id",
+                "2",
+                "--ram",
+                "2048",
+                "--disk",
+                "20",
+                "--vcpus",
+                "1",
+                "m1.small",
+            )
+        if not call("openstack", "flavor", "show", "m1.medium"):
+            check(
+                "openstack",
+                "flavor",
+                "create",
+                "--id",
+                "3",
+                "--ram",
+                "4096",
+                "--disk",
+                "20",
+                "--vcpus",
+                "2",
+                "m1.medium",
+            )
+        if not call("openstack", "flavor", "show", "m1.large"):
+            check(
+                "openstack",
+                "flavor",
+                "create",
+                "--id",
+                "4",
+                "--ram",
+                "8192",
+                "--disk",
+                "20",
+                "--vcpus",
+                "4",
+                "m1.large",
+            )
+        if not call("openstack", "flavor", "show", "m1.xlarge"):
+            check(
+                "openstack",
+                "flavor",
+                "create",
+                "--id",
+                "5",
+                "--ram",
+                "16384",
+                "--disk",
+                "20",
+                "--vcpus",
+                "8",
+                "m1.xlarge",
+            )
 
     def yes(self, answer: str) -> None:
-        log.info('Configuring nova control plane services ...')
+        log.info("Configuring nova control plane services ...")
 
-        if not call('openstack', 'user', 'show', 'nova'):
+        if not call("openstack", "user", "show", "nova"):
             check(
-                'openstack', 'user', 'create', '--domain', 'default',
-                '--password',
-                shell.config_get('config.credentials.nova-password'),
-                'nova'
+                "openstack",
+                "user",
+                "create",
+                "--domain",
+                "default",
+                "--password",
+                shell.config_get("config.credentials.nova-password"),
+                "nova",
             )
-            check('openstack', 'role', 'add', '--project',
-                  'service', '--user', 'nova', 'admin')
+            check(
+                "openstack",
+                "role",
+                "add",
+                "--project",
+                "service",
+                "--user",
+                "nova",
+                "admin",
+            )
             # Assign the reader role to the nova user so that read-only
             # application credentials can be created.
-            check('openstack', 'role', 'add', '--project',
-                  'service', '--user', 'nova', 'reader')
+            check(
+                "openstack",
+                "role",
+                "add",
+                "--project",
+                "service",
+                "--user",
+                "nova",
+                "reader",
+            )
 
-        log.info('Running Nova API DB migrations'
-                 ' (this may take a lot of time)...')
-        check('snap-openstack', 'launch', 'nova-manage', 'api_db', 'sync')
+        log.info(
+            "Running Nova API DB migrations"
+            " (this may take a lot of time)..."
+        )
+        check("snap-openstack", "launch", "nova-manage", "api_db", "sync")
 
-        if 'cell0' not in check_output('snap-openstack', 'launch',
-                                       'nova-manage', 'cell_v2',
-                                       'list_cells'):
-            check('snap-openstack', 'launch', 'nova-manage',
-                  'cell_v2', 'map_cell0')
+        if "cell0" not in check_output(
+            "snap-openstack", "launch", "nova-manage", "cell_v2", "list_cells"
+        ):
+            check(
+                "snap-openstack",
+                "launch",
+                "nova-manage",
+                "cell_v2",
+                "map_cell0",
+            )
 
-        if 'cell1' not in check_output('snap-openstack', 'launch',
-                                       'nova-manage', 'cell_v2', 'list_cells'):
+        if "cell1" not in check_output(
+            "snap-openstack", "launch", "nova-manage", "cell_v2", "list_cells"
+        ):
 
-            check('snap-openstack', 'launch', 'nova-manage', 'cell_v2',
-                  'create_cell', '--name=cell1', '--verbose')
+            check(
+                "snap-openstack",
+                "launch",
+                "nova-manage",
+                "cell_v2",
+                "create_cell",
+                "--name=cell1",
+                "--verbose",
+            )
 
-        log.info('Running Nova DB migrations'
-                 ' (this may take a lot of time)...')
-        check('snap-openstack', 'launch', 'nova-manage', 'db', 'sync')
+        log.info(
+            "Running Nova DB migrations" " (this may take a lot of time)..."
+        )
+        check("snap-openstack", "launch", "nova-manage", "db", "sync")
 
-        enable('nova-api')
-        restart('nova-compute')
-        restart('nginx')
+        enable("nova-api")
+        restart("nova-compute")
+        restart("nginx")
 
         for service in [
-                'nova-api-metadata',
-                'nova-conductor',
-                'nova-scheduler',
+            "nova-api-metadata",
+            "nova-conductor",
+            "nova-scheduler",
         ]:
             enable(service)
 
-        nc_wait(_env['compute_ip'], '8774')
+        nc_wait(_env["compute_ip"], "8774")
 
         sleep(5)  # TODO: log_wait
 
-        if not call('openstack', 'service', 'show', 'compute'):
-            check('openstack', 'service', 'create', '--name', 'nova',
-                  '--description', '"Openstack Compute"', 'compute')
-            for endpoint in ['public', 'internal', 'admin']:
-                call('openstack', 'endpoint', 'create', '--region',
-                     'microstack', 'compute', endpoint,
-                     'https://{control_ip}:8774/v2.1'.format(**_env))
+        if not call("openstack", "service", "show", "compute"):
+            check(
+                "openstack",
+                "service",
+                "create",
+                "--name",
+                "nova",
+                "--description",
+                '"Openstack Compute"',
+                "compute",
+            )
+            for endpoint in ["public", "internal", "admin"]:
+                call(
+                    "openstack",
+                    "endpoint",
+                    "create",
+                    "--region",
+                    "microstack",
+                    "compute",
+                    endpoint,
+                    "https://{control_ip}:8774/v2.1".format(**_env),
+                )
 
-        log.info('Creating default flavors...')
+        log.info("Creating default flavors...")
 
         self._flavors()
 
     def no(self, answer):
-        log.info('Disabling nova control plane services ...')
+        log.info("Disabling nova control plane services ...")
 
         for service in [
-                'nova-api',
-                'nova-conductor',
-                'nova-scheduler',
-                'nova-api-metadata']:
+            "nova-api",
+            "nova-conductor",
+            "nova-scheduler",
+            "nova-api-metadata",
+        ]:
             disable(service)
 
 
 class CinderSetup(Question):
     """Setup Placement services."""
 
-    _type = 'boolean'
-    config_key = 'config.services.control-plane'
+    _type = "boolean"
+    config_key = "config.services.control-plane"
 
     def yes(self, answer: str) -> None:
-        log.info('Configuring the Cinder services...')
+        log.info("Configuring the Cinder services...")
 
-        if not call('openstack', 'user', 'show', 'cinder'):
+        if not call("openstack", "user", "show", "cinder"):
             check(
-                'openstack', 'user', 'create', '--domain', 'default',
-                '--password',
-                shell.config_get('config.credentials.cinder-password'),
-                'cinder'
+                "openstack",
+                "user",
+                "create",
+                "--domain",
+                "default",
+                "--password",
+                shell.config_get("config.credentials.cinder-password"),
+                "cinder",
             )
-            check('openstack', 'role', 'add', '--project', 'service',
-                  '--user', 'cinder', 'admin')
+            check(
+                "openstack",
+                "role",
+                "add",
+                "--project",
+                "service",
+                "--user",
+                "cinder",
+                "admin",
+            )
 
-        control_ip = _env['control_ip']
-        for endpoint in ['public', 'internal', 'admin']:
-            for api_version in ['v2', 'v3']:
-                if not call('openstack', 'service', 'show',
-                            f'cinder{api_version}'):
-                    check('openstack', 'service', 'create', '--name',
-                          f'cinder{api_version}', '--description',
-                          f'"Cinder {api_version} API"',
-                          f'volume{api_version}')
-                if not check_output(
-                        'openstack', 'endpoint', 'list',
-                        '--service', f'volume{api_version}', '--interface',
-                        endpoint):
+        control_ip = _env["control_ip"]
+        for endpoint in ["public", "internal", "admin"]:
+            for api_version in ["v2", "v3"]:
+                if not call(
+                    "openstack", "service", "show", f"cinder{api_version}"
+                ):
                     check(
-                            'openstack', 'endpoint', 'create', '--region',
-                            'microstack', f'volume{api_version}', endpoint,
-                            f'https://{control_ip}:8776/{api_version}/'
-                            '$(project_id)s'
+                        "openstack",
+                        "service",
+                        "create",
+                        "--name",
+                        f"cinder{api_version}",
+                        "--description",
+                        f'"Cinder {api_version} API"',
+                        f"volume{api_version}",
                     )
-        log.info('Running Cinder DB migrations...')
-        check('snap-openstack', 'launch', 'cinder-manage', 'db', 'sync')
+                if not check_output(
+                    "openstack",
+                    "endpoint",
+                    "list",
+                    "--service",
+                    f"volume{api_version}",
+                    "--interface",
+                    endpoint,
+                ):
+                    check(
+                        "openstack",
+                        "endpoint",
+                        "create",
+                        "--region",
+                        "microstack",
+                        f"volume{api_version}",
+                        endpoint,
+                        f"https://{control_ip}:8776/{api_version}/"
+                        "$(project_id)s",
+                    )
+        log.info("Running Cinder DB migrations...")
+        check("snap-openstack", "launch", "cinder-manage", "db", "sync")
 
-        enable('cinder-uwsgi')
-        enable('cinder-scheduler')
+        enable("cinder-uwsgi")
+        enable("cinder-scheduler")
 
     def no(self, answer):
-        log.info('Disabling Cinder services...')
+        log.info("Disabling Cinder services...")
 
         for service in [
-                'cinder-uwsgi',
-                'cinder-scheduler',
-                'cinder-volume',
-                'cinder-backup']:
+            "cinder-uwsgi",
+            "cinder-scheduler",
+            "cinder-volume",
+            "cinder-backup",
+        ]:
             disable(service)
 
 
 class CinderVolumeLVMSetup(Question):
     """Setup cinder-volume with LVM."""
 
-    _type = 'boolean'
-    config_key = 'config.cinder.setup-loop-based-cinder-lvm-backend'
-    _question = ('(experimental) Would you like to setup a loop device-backed'
-                 ' LVM volume backend for Cinder?')
+    _type = "boolean"
+    config_key = "config.cinder.setup-loop-based-cinder-lvm-backend"
+    _question = (
+        "(experimental) Would you like to setup a loop device-backed"
+        " LVM volume backend for Cinder?"
+    )
     interactive = True
 
     def yes(self, answer: bool) -> None:
-        check('snapctl', 'set',
-              f'config.cinder.setup-loop-based-cinder-lvm-backend'
-              f'={str(answer).lower()}')
-        log.info('Setting up cinder-volume service with the LVM backend...')
-        enable('setup-lvm-loopdev')
-        enable('cinder-volume')
-        enable('target')
-        enable('iscsid')
+        check(
+            "snapctl",
+            "set",
+            f"config.cinder.setup-loop-based-cinder-lvm-backend"
+            f"={str(answer).lower()}",
+        )
+        log.info("Setting up cinder-volume service with the LVM backend...")
+        enable("setup-lvm-loopdev")
+        enable("cinder-volume")
+        enable("target")
+        enable("iscsid")
 
     def no(self, answer: bool) -> None:
-        check('snapctl', 'set', f'config.cinder.lvm.setup-file-backed-lvm='
-                                f'{str(answer).lower()}')
-        disable('setup-lvm-loopdev')
-        disable('cinder-volume')
-        disable('iscsid')
-        disable('target')
+        check(
+            "snapctl",
+            "set",
+            f"config.cinder.lvm.setup-file-backed-lvm="
+            f"{str(answer).lower()}",
+        )
+        disable("setup-lvm-loopdev")
+        disable("cinder-volume")
+        disable("iscsid")
+        disable("target")
 
 
 class NeutronControlPlane(Question):
     """Create all relevant neutron services and users."""
 
-    _type = 'boolean'
-    config_key = 'config.services.control-plane'
+    _type = "boolean"
+    config_key = "config.services.control-plane"
 
     def yes(self, answer: str) -> None:
-        log.info('Configuring Neutron')
+        log.info("Configuring Neutron")
 
-        if not call('openstack', 'user', 'show', 'neutron'):
+        if not call("openstack", "user", "show", "neutron"):
             check(
-                'openstack', 'user', 'create', '--domain', 'default',
-                '--password',
-                shell.config_get('config.credentials.neutron-password'),
-                'neutron')
-            check('openstack', 'role', 'add', '--project', 'service',
-                  '--user', 'neutron', 'admin')
+                "openstack",
+                "user",
+                "create",
+                "--domain",
+                "default",
+                "--password",
+                shell.config_get("config.credentials.neutron-password"),
+                "neutron",
+            )
+            check(
+                "openstack",
+                "role",
+                "add",
+                "--project",
+                "service",
+                "--user",
+                "neutron",
+                "admin",
+            )
 
-        if not call('openstack', 'service', 'show', 'network'):
-            check('openstack', 'service', 'create', '--name', 'neutron',
-                  '--description', '"OpenStack Network"', 'network')
-            for endpoint in ['public', 'internal', 'admin']:
-                call('openstack', 'endpoint', 'create', '--region',
-                     'microstack', 'network', endpoint,
-                     'https://{control_ip}:9696'.format(**_env))
+        if not call("openstack", "service", "show", "network"):
+            check(
+                "openstack",
+                "service",
+                "create",
+                "--name",
+                "neutron",
+                "--description",
+                '"OpenStack Network"',
+                "network",
+            )
+            for endpoint in ["public", "internal", "admin"]:
+                call(
+                    "openstack",
+                    "endpoint",
+                    "create",
+                    "--region",
+                    "microstack",
+                    "network",
+                    endpoint,
+                    "https://{control_ip}:9696".format(**_env),
+                )
 
-        check('snap-openstack', 'launch', 'neutron-db-manage', 'upgrade',
-              'head')
-        enable('neutron-api')
-        enable('neutron-ovn-metadata-agent')
-        restart('nginx')
+        check(
+            "snap-openstack", "launch", "neutron-db-manage", "upgrade", "head"
+        )
+        enable("neutron-api")
+        enable("neutron-ovn-metadata-agent")
+        restart("nginx")
 
-        nc_wait(_env['control_ip'], '9696')
+        nc_wait(_env["control_ip"], "9696")
 
         sleep(5)  # TODO: log_wait
 
-        if not call('openstack', 'network', 'show', 'test'):
-            check('openstack', 'network', 'create', 'test')
+        if not call("openstack", "network", "show", "test"):
+            check("openstack", "network", "create", "test")
 
-        if not call('openstack', 'subnet', 'show', 'test-subnet'):
-            check('openstack', 'subnet', 'create', '--network', 'test',
-                  '--subnet-range', '192.168.222.0/24', 'test-subnet')
+        if not call("openstack", "subnet", "show", "test-subnet"):
+            check(
+                "openstack",
+                "subnet",
+                "create",
+                "--network",
+                "test",
+                "--subnet-range",
+                "192.168.222.0/24",
+                "test-subnet",
+            )
 
-        if not call('openstack', 'network', 'show', 'external'):
-            check('openstack', 'network', 'create', '--external',
-                  '--provider-physical-network=physnet1',
-                  '--provider-network-type=flat', 'external')
-        if not call('openstack', 'subnet', 'show', 'external-subnet'):
-            check('openstack', 'subnet', 'create', '--network', 'external',
-                  '--subnet-range', _env['extcidr'], '--no-dhcp',
-                  'external-subnet')
+        if not call("openstack", "network", "show", "external"):
+            check(
+                "openstack",
+                "network",
+                "create",
+                "--external",
+                "--provider-physical-network=physnet1",
+                "--provider-network-type=flat",
+                "external",
+            )
+        if not call("openstack", "subnet", "show", "external-subnet"):
+            check(
+                "openstack",
+                "subnet",
+                "create",
+                "--network",
+                "external",
+                "--subnet-range",
+                _env["extcidr"],
+                "--no-dhcp",
+                "external-subnet",
+            )
 
-        if not call('openstack', 'router', 'show', 'test-router'):
-            check('openstack', 'router', 'create', 'test-router')
-            check('openstack', 'router', 'add', 'subnet', 'test-router',
-                  'test-subnet')
-            check('openstack', 'router', 'set', '--external-gateway',
-                  'external', 'test-router')
+        if not call("openstack", "router", "show", "test-router"):
+            check("openstack", "router", "create", "test-router")
+            check(
+                "openstack",
+                "router",
+                "add",
+                "subnet",
+                "test-router",
+                "test-subnet",
+            )
+            check(
+                "openstack",
+                "router",
+                "set",
+                "--external-gateway",
+                "external",
+                "test-router",
+            )
 
     def no(self, answer):
         """Create endpoints pointed at control node if we're not setting up
@@ -913,158 +1246,226 @@ class NeutronControlPlane(Question):
         """
         # Make sure the necessary services are enabled and started.
         for service in [
-                'ovs-vswitchd',
-                'ovsdb-server',
-                'ovn-controller',
-                'neutron-ovn-metadata-agent'
+            "ovs-vswitchd",
+            "ovsdb-server",
+            "ovn-controller",
+            "neutron-ovn-metadata-agent",
         ]:
             enable(service)
             restart(service)
 
         # Disable the other services.
         for service in [
-                'neutron-api',
-                'ovn-northd',
-                'ovn-ovsdb-server-sb',
-                'ovn-ovsdb-server-nb',
+            "neutron-api",
+            "ovn-northd",
+            "ovn-ovsdb-server-sb",
+            "ovn-ovsdb-server-nb",
         ]:
             disable(service)
 
 
 class GlanceSetup(Question):
-    """Setup glance, and download an initial Cirros image."""
+    """Setup glance, and download an microstack_initial Cirros image."""
 
-    _type = 'boolean'
-    config_key = 'config.services.control-plane'
+    _type = "boolean"
+    config_key = "config.services.control-plane"
 
     def _fetch_cirros(self) -> None:
 
-        if call('openstack', 'image', 'show', 'cirros'):
+        if call("openstack", "image", "show", "cirros"):
             return
 
-        log.info('Adding cirros image ...')
+        log.info("Adding cirros image ...")
 
         env = dict(**_env)
-        env['VER'] = '0.4.0'
-        env['ARCH'] = platform.machine()
-        env['IMG'] = 'cirros-{VER}-{ARCH}-disk.img'.format(**env)
+        env["VER"] = "0.4.0"
+        env["ARCH"] = platform.machine()
+        env["IMG"] = "cirros-{VER}-{ARCH}-disk.img".format(**env)
 
-        cirros_path = '{SNAP_COMMON}/images/{IMG}'.format(**env)
+        cirros_path = "{SNAP_COMMON}/images/{IMG}".format(**env)
 
         if not path.exists(cirros_path):
-            check('mkdir', '-p', '{SNAP_COMMON}/images'.format(**env))
-            log.info('Downloading cirros image ...')
+            check("mkdir", "-p", "{SNAP_COMMON}/images".format(**env))
+            log.info("Downloading cirros image ...")
             download(
-                'http://download.cirros-cloud.net/{VER}/{IMG}'.format(**env),
-                '{SNAP_COMMON}/images/{IMG}'.format(**env))
+                "http://download.cirros-cloud.net/{VER}/{IMG}".format(**env),
+                "{SNAP_COMMON}/images/{IMG}".format(**env),
+            )
 
-        check('openstack', 'image', 'create', '--file',
-              '{SNAP_COMMON}/images/{IMG}'.format(**env),
-              '--public', '--container-format=bare',
-              '--disk-format=qcow2', 'cirros')
+        check(
+            "openstack",
+            "image",
+            "create",
+            "--file",
+            "{SNAP_COMMON}/images/{IMG}".format(**env),
+            "--public",
+            "--container-format=bare",
+            "--disk-format=qcow2",
+            "cirros",
+        )
 
     def yes(self, answer: str) -> None:
 
-        log.info('Configuring Glance ...')
+        log.info("Configuring Glance ...")
 
-        if not call('openstack', 'user', 'show', 'glance'):
+        if not call("openstack", "user", "show", "glance"):
             check(
-                'openstack', 'user', 'create', '--domain', 'default',
-                '--password',
-                shell.config_get('config.credentials.glance-password'),
-                'glance'
+                "openstack",
+                "user",
+                "create",
+                "--domain",
+                "default",
+                "--password",
+                shell.config_get("config.credentials.glance-password"),
+                "glance",
             )
-            check('openstack', 'role', 'add', '--project', 'service',
-                  '--user', 'glance', 'admin')
+            check(
+                "openstack",
+                "role",
+                "add",
+                "--project",
+                "service",
+                "--user",
+                "glance",
+                "admin",
+            )
 
-        if not call('openstack', 'service', 'show', 'image'):
-            check('openstack', 'service', 'create', '--name', 'glance',
-                  '--description', '"OpenStack Image"', 'image')
-            for endpoint in ['internal', 'admin', 'public']:
-                check('openstack', 'endpoint', 'create', '--region',
-                      'microstack', 'image', endpoint,
-                      'https://{compute_ip}:9292'.format(**_env))
+        if not call("openstack", "service", "show", "image"):
+            check(
+                "openstack",
+                "service",
+                "create",
+                "--name",
+                "glance",
+                "--description",
+                '"OpenStack Image"',
+                "image",
+            )
+            for endpoint in ["internal", "admin", "public"]:
+                check(
+                    "openstack",
+                    "endpoint",
+                    "create",
+                    "--region",
+                    "microstack",
+                    "image",
+                    endpoint,
+                    "https://{compute_ip}:9292".format(**_env),
+                )
 
-        check('snap-openstack', 'launch', 'glance-manage', 'db_sync')
-        enable('glance-api')
-        restart('nginx')
+        check("snap-openstack", "launch", "glance-manage", "db_sync")
+        enable("glance-api")
+        restart("nginx")
 
-        nc_wait(_env['compute_ip'], '9292')
+        nc_wait(_env["compute_ip"], "9292")
 
         sleep(5)  # TODO: log_wait
 
         self._fetch_cirros()
 
     def no(self, answer):
-        disable('glance-api')
+        disable("glance-api")
 
 
 class SecurityRules(Question):
     """Setup default security rules."""
 
-    _type = 'boolean'
-    config_key = 'config.network.security-rules'
+    _type = "boolean"
+    config_key = "config.network.security-rules"
 
     def yes(self, answer: str) -> None:
         # Create security group rules
-        log.info('Creating security group rules ...')
-        group_id = check_output('openstack', 'security', 'group', 'list',
-                                '--project', 'admin', '-f', 'value',
-                                '-c', 'ID')
-        rules = check_output('openstack', 'security', 'group', 'rule', 'list',
-                             '--format', 'json')
+        log.info("Creating security group rules ...")
+        group_id = check_output(
+            "openstack",
+            "security",
+            "group",
+            "list",
+            "--project",
+            "admin",
+            "-f",
+            "value",
+            "-c",
+            "ID",
+        )
+        rules = check_output(
+            "openstack",
+            "security",
+            "group",
+            "rule",
+            "list",
+            "--format",
+            "json",
+        )
         ping_rule = False
         ssh_rule = False
 
         for rule in json.loads(rules):
-            if rule['Security Group'] == group_id:
-                if rule['IP Protocol'] == 'icmp':
+            if rule["Security Group"] == group_id:
+                if rule["IP Protocol"] == "icmp":
                     ping_rule = True
-                if rule['IP Protocol'] == 'tcp':
+                if rule["IP Protocol"] == "tcp":
                     ssh_rule = True
 
         if not ping_rule:
-            check('openstack', 'security', 'group', 'rule', 'create',
-                  group_id, '--proto', 'icmp')
+            check(
+                "openstack",
+                "security",
+                "group",
+                "rule",
+                "create",
+                group_id,
+                "--proto",
+                "icmp",
+            )
         if not ssh_rule:
-            check('openstack', 'security', 'group', 'rule', 'create',
-                  group_id, '--proto', 'tcp', '--dst-port', '22')
+            check(
+                "openstack",
+                "security",
+                "group",
+                "rule",
+                "create",
+                group_id,
+                "--proto",
+                "tcp",
+                "--dst-port",
+                "22",
+            )
 
 
 class PostSetup(Question):
-    """Sneak in any additional cleanup, then set the initialized state."""
+    """Sneak in any additional cleanup, then set the microstack_initialized state."""
 
-    config_key = 'config.post-setup'
+    config_key = "config.post-setup"
 
     def yes(self, answer: str) -> None:
-        log.info('restarting libvirt and virtlogd ...')
+        log.info("restarting libvirt and virtlogd ...")
         # This fixes an issue w/ logging not getting set.
         # TODO: fix issue.
-        restart('libvirtd')
-        restart('virtlogd')
-        restart('nova-compute')
+        restart("libvirtd")
+        restart("virtlogd")
+        restart("nova-compute")
 
-        role = shell.config_get('config.cluster.role')
-        if role == 'control':
+        role = shell.config_get("config.cluster.role")
+        if role == "control":
             # TODO: since snap-openstack launch is used, this depends on the
             # database readiness and hence the clustering service is enabled
             # and started here. There needs to be a better way to do this.
-            enable('cluster-uwsgi')
-            enable('horizon-uwsgi')
+            enable("cluster-uwsgi")
+            enable("horizon-uwsgi")
 
-        check('snapctl', 'set', 'initialized=true')
-        log.info('Complete. Marked microstack as initialized!')
+        check("snapctl", "set", "microstack_initialized=true")
+        log.info("Complete. Marked microstack as microstack_initialized!")
 
 
 class SimpleServiceQuestion(Question):
-
     def yes(self, answer: str) -> None:
-        log.info('enabling and starting ' + self.__class__.__name__)
+        log.info("enabling and starting " + self.__class__.__name__)
 
         for service in self.services:
             enable(service)
 
-        log.info(self.__class__.__name__ + ' enabled')
+        log.info(self.__class__.__name__ + " enabled")
 
     def no(self, answer):
         for service in self.services:
@@ -1073,9 +1474,9 @@ class SimpleServiceQuestion(Question):
 
 class ExtraServicesQuestion(Question):
 
-    _type = 'boolean'
-    _question = 'Would you like to setup extra services?'
-    config_key = 'config.services.extra.enabled'
+    _type = "boolean"
+    _question = "Would you like to setup extra services?"
+    config_key = "config.services.extra.enabled"
     interactive = True
 
     def yes(self, answer: bool):
@@ -1095,39 +1496,33 @@ class ExtraServicesQuestion(Question):
 
 
 class Filebeat(SimpleServiceQuestion):
-    _type = 'boolean'
-    _question = 'Would you like to enable Filebeat?'
-    config_key = 'config.services.extra.filebeat'
+    _type = "boolean"
+    _question = "Would you like to enable Filebeat?"
+    config_key = "config.services.extra.filebeat"
     interactive = True
 
     @property
     def services(self):
-        return [
-            '{SNAP_INSTANCE_NAME}.filebeat'.format(**_env)
-        ]
+        return ["{SNAP_INSTANCE_NAME}.filebeat".format(**_env)]
 
 
 class Telegraf(SimpleServiceQuestion):
-    _type = 'boolean'
-    _question = 'Would you like to enable Telegraf?'
-    config_key = 'config.services.extra.telegraf'
+    _type = "boolean"
+    _question = "Would you like to enable Telegraf?"
+    config_key = "config.services.extra.telegraf"
     interactive = True
 
     @property
     def services(self):
-        return [
-            '{SNAP_INSTANCE_NAME}.telegraf'.format(**_env)
-        ]
+        return ["{SNAP_INSTANCE_NAME}.telegraf".format(**_env)]
 
 
 class Nrpe(SimpleServiceQuestion):
-    _type = 'boolean'
-    _question = 'Would you like to enable NRPE?'
-    config_key = 'config.services.extra.nrpe'
+    _type = "boolean"
+    _question = "Would you like to enable NRPE?"
+    config_key = "config.services.extra.nrpe"
     interactive = True
 
     @property
     def services(self):
-        return [
-            '{SNAP_INSTANCE_NAME}.nrpe'.format(**_env)
-        ]
+        return ["{SNAP_INSTANCE_NAME}.nrpe".format(**_env)]

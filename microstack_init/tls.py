@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-from init.shell import check
+from microstack_init.shell import check
 
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 
-from init import shell
+from microstack_init import shell
 
 
 def create_or_get_private_key(key_path: Path) -> rsa.RSAPrivateKey:
@@ -30,12 +30,14 @@ def create_or_get_private_key(key_path: Path) -> rsa.RSAPrivateKey:
     # If the key path exists, then attempt to load it in order to make sure
     # it is a valid private key.
     if key_path.exists():
-        with open(key_path, 'rb') as f:
-            key = serialization.load_pem_private_key(f.read(), None,
-                                                     default_backend())
+        with open(key_path, "rb") as f:
+            key = serialization.load_pem_private_key(
+                f.read(), None, default_backend()
+            )
             if not isinstance(key, rsa.RSAPrivateKey):
-                raise TypeError('Private key already exists but is not an '
-                                'RSA key')
+                raise TypeError(
+                    "Private key already exists but is not an " "RSA key"
+                )
             return key
     key = rsa.generate_private_key(
         public_exponent=65537,
@@ -48,12 +50,13 @@ def create_or_get_private_key(key_path: Path) -> rsa.RSAPrivateKey:
         encryption_algorithm=serialization.NoEncryption(),
     )
     key_path.write_bytes(serialized_key)
-    check('chmod', '600', str(key_path))
+    check("chmod", "600", str(key_path))
     return key
 
 
-def generate_self_signed(cert_path, key_path, ip=None,
-                         fingerprint_config=None):
+def generate_self_signed(
+    cert_path, key_path, ip=None, fingerprint_config=None
+):
     """Generate a self-signed certificate with associated keys.
 
     The certificate will have a fake CNAME and subjAltName since
@@ -61,7 +64,7 @@ def generate_self_signed(cert_path, key_path, ip=None,
     clients that know its fingerprint and will not use a validation
     via a CA certificate and hostname. This approach is similar to
     Certificate Pinning, however, here a certificate is not embedded
-    into the application but is generated on initialization at one
+    into the application but is generated on microstack_initialization at one
     node and its fingerprint is copied in a token to another node
     via a secure channel.
     https://owasp.org/www-community/controls/Certificate_and_Public_Key_Pinning
@@ -73,9 +76,7 @@ def generate_self_signed(cert_path, key_path, ip=None,
 
     key = create_or_get_private_key(key_path=key_path)
     cn = socket.getfqdn()
-    common_name = x509.Name([
-        x509.NameAttribute(NameOID.COMMON_NAME, cn)
-    ])
+    common_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, cn)])
     if ip:
         san = x509.SubjectAlternativeName(
             [x509.DNSName(cn), x509.IPAddress(ipaddress.ip_address(ip))]
@@ -105,11 +106,12 @@ def generate_self_signed(cert_path, key_path, ip=None,
 
     serialized_cert = cert.public_bytes(encoding=serialization.Encoding.PEM)
     cert_path.write_bytes(serialized_cert)
-    check('chmod', '644', str(cert_path))
+    check("chmod", "644", str(cert_path))
 
 
-def create_csr(key_path: Path, ip: str = None) -> \
-        x509.CertificateSigningRequest:
+def create_csr(
+    key_path: Path, ip: str = None
+) -> x509.CertificateSigningRequest:
     """Creates a Certificate Signing Request (CSR) for the local node.
 
     A CSR is created for the local node. The resulting CSR can be provided to
@@ -124,9 +126,10 @@ def create_csr(key_path: Path, ip: str = None) -> \
     :returns: x509.CertificateSigningRequest object for the local node
     :rtype: x509.CertificateSigningRequest
     """
-    with open(key_path, 'rb+') as f:
-        key = serialization.load_pem_private_key(f.read(), None,
-                                                 default_backend())
+    with open(key_path, "rb+") as f:
+        key = serialization.load_pem_private_key(
+            f.read(), None, default_backend()
+        )
 
     hostname = socket.getfqdn()
     cn = x509.NameAttribute(NameOID.COMMON_NAME, hostname)
@@ -158,12 +161,13 @@ def generate_cert_from_csr(ca_path, key_path, client_csr):
     :return: PEM encoded certificate
     :rtype: bytes
     """
-    with open(ca_path, 'rb') as f:
+    with open(ca_path, "rb") as f:
         cacert = x509.load_pem_x509_certificate(f.read(), default_backend())
 
-    with open(key_path, 'rb') as f:
-        key = serialization.load_pem_private_key(f.read(), None,
-                                                 default_backend())
+    with open(key_path, "rb") as f:
+        key = serialization.load_pem_private_key(
+            f.read(), None, default_backend()
+        )
 
     csr = x509.load_pem_x509_csr(client_csr, default_backend())
 
@@ -176,7 +180,8 @@ def generate_cert_from_csr(ca_path, key_path, client_csr):
         .not_valid_before(datetime.utcnow())
         .not_valid_after(
             # Set it to expire 2 days before our cacert does
-            cacert.not_valid_after - relativedelta(days=2)
+            cacert.not_valid_after
+            - relativedelta(days=2)
         )
     )
 

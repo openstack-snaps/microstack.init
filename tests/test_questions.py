@@ -4,7 +4,7 @@ import mock
 import os
 import sys
 
-from init.questions import NovaHypervisor
+from microstack_init.questions import NovaHypervisor
 
 sys.path.append(os.getcwd())  # noqa
 
