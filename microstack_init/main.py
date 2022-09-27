@@ -37,8 +37,8 @@ import ipaddress
 
 from functools import wraps
 
-from init.config import log
-from init.shell import (
+from microstack_init.config import log
+from microstack_init.shell import (
     default_network,
     check,
     check_output,
