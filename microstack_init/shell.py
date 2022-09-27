@@ -12,13 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""shell.py
-
-Contains wrappers around subprocess and pymysql commands, specific to
-our needs in the microstack_init script.
-
-# TODO capture stdout (and output to log.DEBUG)
-"""
+"""Helpers for subprocess and mysql commands."""
 
 import subprocess
 from time import sleep
@@ -200,7 +194,7 @@ def config_set(**kwargs):
 
 
 def download(url: str, output: str) -> None:
-    """Download a file to a path"""
+    """Download a file to a path."""
     wget.download(url, output)
 
 

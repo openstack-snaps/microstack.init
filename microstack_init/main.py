@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Microstack Init
+"""Microstack Init.
 
 Initialize the databases and configuration files of a microstack
 install.
@@ -33,6 +33,7 @@ import socket
 import ipaddress
 
 from functools import wraps
+from typing import Callable
 
 from microstack_init.config import log
 from microstack_init.shell import (
@@ -46,7 +47,8 @@ from microstack_init.shell import (
 from microstack_init import questions
 
 
-def requires_sudo(func):
+def requires_sudo(func: Callable):
+    """Annotation for scripts that need sudo."""
     @wraps(func)
     def wrapper(*args, **kwargs):
         if int(check_output("id", "-u")):
@@ -61,7 +63,8 @@ def requires_sudo(func):
     return wrapper
 
 
-def check_file_size_positive(value):
+def check_file_size_positive(value: str) -> int:
+    """Validate value is a positive integer."""
     ival = int(value)
     if ival < 1:
         raise argparse.ArgumentTypeError(
@@ -71,7 +74,8 @@ def check_file_size_positive(value):
     return ival
 
 
-def check_source_ip_address_valid(value):
+def check_source_ip_address_valid(value) -> ipaddress.IPv4Address:
+    """Validate an IP address."""
     try:
         addr = ipaddress.ip_address(value)
     except ValueError as e:
@@ -81,7 +85,8 @@ def check_source_ip_address_valid(value):
     return addr
 
 
-def parse_init_args():
+def parse_init_args() -> argparse.Namespace:
+    """Build parser for init call."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--auto", "-a", action="store_true", help="Run non interactively."
@@ -128,9 +133,10 @@ def parse_init_args():
 
 
 def process_init_args(args):
-    """Look through our args object and set the proper default config
-    values in our snap config, based on those args.
+    """Process init arguments.
 
+    Look through our args object and set the proper default config
+    values in our snap config, based on those args.
     """
     if args.auto and not (args.control or args.compute):
         raise ValueError(
@@ -179,6 +185,7 @@ def process_init_args(args):
 
 @requires_sudo
 def init() -> None:
+    """Initialize microstack."""
     args = parse_init_args()
     auto = process_init_args(args)
 
@@ -251,7 +258,6 @@ def set_network_info() -> None:
 
     Helper to find the default network on a machine, and configure
     MicroStack to use it in its default settings.
-
     """
     try:
         ip, gate, cidr = default_network()
@@ -276,7 +282,6 @@ def set_network_info() -> None:
 @requires_sudo
 def remove() -> None:
     """Helper to cleanly uninstall MicroStack."""
-
     # Strip '--auto' out of the args passed to this command, as we
     # need to check it, but also pass the other args off to the
     # snapd's uninstall command. TODO: make this less hacky.
