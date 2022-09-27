@@ -46,7 +46,7 @@ from microstack_init.shell import (
     fallback_source_address,
 )
 
-from init import questions
+from microstack_init import questions
 
 
 def requires_sudo(func):

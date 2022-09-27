@@ -69,7 +69,7 @@ class Question:
     _invalid_prompt = "Please answer Yes or No."
     _retries = 3
 
-    def __microstack_init__(self):
+    def __init__(self):
 
         if self._type not in ["boolean", "string", "auto"]:
             raise InvalidQuestion(
@@ -117,7 +117,7 @@ class Question:
     def _load(self):
         """Get the current value of the answer to this question.
 
-        Useful for loading defaults during microstack_init, and for loading
+        Useful for loading defaults during init, and for loading
         operator specified settings during updates.
 
         """
